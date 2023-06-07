@@ -1,0 +1,10 @@
+displayName: traefik loves ip2region
+type: middleware
+iconPath: .assets/icon.png
+
+import: github.com/jeessy2/traefik-ip2region
+
+summary: 'traefik loves ip2region'
+
+testData:
+  dbPath: 'ip2region.xdb'
