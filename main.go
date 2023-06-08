@@ -16,9 +16,12 @@ import (
 const (
 	// RealIPHeader real ip header.
 	RealIPHeader       = "X-Real-IP"
-	DefaultCacheExpire = 60 * time.Minute
-	DefaultCachePurge  = 12 * time.Hour
+	DefaultCacheExpire = 30 * time.Minute
+	DefaultCachePurge  = 2 * time.Hour
 )
+
+// searcher cached
+var searcher *xdb.Searcher
 
 // Headers part of the configuration
 type Headers struct {
@@ -60,35 +63,26 @@ func CreateConfig() *Config {
 
 // TraefikIp2Region a Demo plugin.
 type TraefikIp2Region struct {
-	next     http.Handler
-	name     string
-	headers  *Headers
-	searcher *xdb.Searcher
-	cache    *cache.Cache
-	ban      Ban
+	next    http.Handler
+	name    string
+	headers *Headers
+	cache   *cache.Cache
+	ban     Ban
 }
 
 // New created a new Demo plugin.
 func New(ctx context.Context, next http.Handler, config *Config, name string) (http.Handler, error) {
-	// 1、从 dbPath 加载整个 xdb 到内存
-	cBuff, err := xdb.LoadContentFromFile(config.DBPath)
+	err := loadXdb(config.DBPath)
 	if err != nil {
-		fmt.Printf("failed to load content from `%s`: %s\n", config.DBPath, err)
-	}
-
-	// 2、用全局的 cBuff 创建完全基于内存的查询对象。
-	searcher, err := xdb.NewWithBuffer(cBuff)
-	if err != nil {
-		fmt.Printf("failed to create searcher with content: %s\n", err)
+		return nil, err
 	}
 
 	return &TraefikIp2Region{
-		next:     next,
-		name:     name,
-		headers:  config.Headers,
-		ban:      config.Ban,
-		searcher: searcher,
-		cache:    cache.New(DefaultCacheExpire, DefaultCachePurge),
+		next:    next,
+		name:    name,
+		headers: config.Headers,
+		ban:     config.Ban,
+		cache:   cache.New(DefaultCacheExpire, DefaultCachePurge),
 	}, nil
 }
 
@@ -119,7 +113,7 @@ func (a *TraefikIp2Region) ServeHTTP(rw http.ResponseWriter, req *http.Request) 
 		result = c.(*IpResult)
 	} else {
 		// 国家|区域|省份|城市|ISP
-		region, err := a.searcher.SearchByStr(ipStr)
+		region, err := searcher.SearchByStr(ipStr)
 		if err == nil {
 			data := strings.Split(region, "|")
 			result = &IpResult{Country: data[0], Province: data[2], City: data[3], ISP: data[4]}
@@ -161,4 +155,21 @@ func (a *TraefikIp2Region) addHeaders(req *http.Request, result *IpResult) {
 		req.Header.Add(a.headers.ISP, "NotFound")
 	}
 
+}
+
+func loadXdb(dbPath string) error {
+	if searcher == nil {
+		// 1、从 dbPath 加载整个 xdb 到内存
+		cBuff, err := xdb.LoadContentFromFile(dbPath)
+		if err != nil {
+			return fmt.Errorf("failed to load content from `%s`: %s", dbPath, err)
+		}
+
+		// 2、用全局的 cBuff 创建完全基于内存的查询对象。
+		searcher, err = xdb.NewWithBuffer(cBuff)
+		if err != nil {
+			return fmt.Errorf("failed to create searcher with content: %s", err)
+		}
+	}
+	return nil
 }
