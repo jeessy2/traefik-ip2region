@@ -24,7 +24,7 @@
             dbPath: /opt/plugins-storage/ip2region.xdb
             # headers:
             #  country: "X-Ip2region-City"
-            #  city: "X-Ip2region-City"
+            #  province: "X-Ip2region-Province"
             #  city: "X-Ip2region-City"
             #  isp: "X-Ip2region-Isp"
             ban:

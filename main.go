@@ -7,17 +7,13 @@ import (
 	"net"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/lionsoul2014/ip2region/binding/golang/xdb"
-	cache "github.com/patrickmn/go-cache"
 )
 
 const (
 	// RealIPHeader real ip header.
-	RealIPHeader       = "X-Real-IP"
-	DefaultCacheExpire = 30 * time.Minute
-	DefaultCachePurge  = 2 * time.Hour
+	RealIPHeader = "X-Real-IP"
 )
 
 // searcher cached
@@ -29,14 +25,6 @@ type Headers struct {
 	Province string `yaml:"province"`
 	City     string `yaml:"city"`
 	ISP      string `yaml:"isp"`
-}
-
-// IpResult Ip result.
-type IpResult struct {
-	Country  string
-	Province string
-	City     string
-	ISP      string
 }
 
 // Config the plugin configuration.
@@ -66,7 +54,6 @@ type TraefikIp2Region struct {
 	next    http.Handler
 	name    string
 	headers *Headers
-	cache   *cache.Cache
 	ban     Ban
 }
 
@@ -82,19 +69,10 @@ func New(ctx context.Context, next http.Handler, config *Config, name string) (h
 		name:    name,
 		headers: config.Headers,
 		ban:     config.Ban,
-		cache:   cache.New(DefaultCacheExpire, DefaultCachePurge),
 	}, nil
 }
 
 func (a *TraefikIp2Region) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
-
-	// ban UserAgent
-	for _, v := range a.ban.UserAgent {
-		if v == req.UserAgent() {
-			rw.WriteHeader(http.StatusForbidden)
-			return
-		}
-	}
 
 	ipStr := req.Header.Get(RealIPHeader)
 	if ipStr == "" {
@@ -105,25 +83,27 @@ func (a *TraefikIp2Region) ServeHTTP(rw http.ResponseWriter, req *http.Request) 
 		}
 	}
 
-	var (
-		result *IpResult
-	)
+	var data []string = make([]string, 5)
 
-	if c, found := a.cache.Get(ipStr); found {
-		result = c.(*IpResult)
-	} else {
-		// 国家|区域|省份|城市|ISP
-		region, err := searcher.SearchByStr(ipStr)
-		if err == nil {
-			data := strings.Split(region, "|")
-			result = &IpResult{Country: data[0], Province: data[2], City: data[3], ISP: data[4]}
-			a.cache.Set(ipStr, result, cache.DefaultExpiration)
+	// 国家|区域|省份|城市|ISP
+	region, err := searcher.SearchByStr(ipStr)
+	if err == nil {
+		data = strings.Split(region, "|")
+		if len(data) != 5 {
+			data = make([]string, 5)
 		}
 	}
 
+	// add headers
+	// 国家|区域|省份|城市|ISP
+	req.Header.Add(a.headers.Country, data[0])
+	req.Header.Add(a.headers.Province, data[2])
+	req.Header.Add(a.headers.City, data[3])
+	req.Header.Add(a.headers.ISP, data[4])
+
 	// ban country
 	for _, v := range a.ban.Country {
-		if v == result.Country {
+		if v == data[0] {
 			rw.WriteHeader(http.StatusForbidden)
 			return
 		}
@@ -131,30 +111,21 @@ func (a *TraefikIp2Region) ServeHTTP(rw http.ResponseWriter, req *http.Request) 
 
 	// ban city
 	for _, v := range a.ban.City {
-		if v == result.City {
+		if v == data[3] {
 			rw.WriteHeader(http.StatusForbidden)
 			return
 		}
 	}
 
-	a.addHeaders(req, result)
-
-	a.next.ServeHTTP(rw, req)
-}
-
-func (a *TraefikIp2Region) addHeaders(req *http.Request, result *IpResult) {
-	if result != nil {
-		req.Header.Add(a.headers.Country, result.Country)
-		req.Header.Add(a.headers.Province, result.Province)
-		req.Header.Add(a.headers.City, result.City)
-		req.Header.Add(a.headers.ISP, result.ISP)
-	} else {
-		req.Header.Add(a.headers.Country, "NotFound")
-		req.Header.Add(a.headers.Province, "NotFound")
-		req.Header.Add(a.headers.City, "NotFound")
-		req.Header.Add(a.headers.ISP, "NotFound")
+	// ban UserAgent
+	for _, v := range a.ban.UserAgent {
+		if v == req.UserAgent() {
+			rw.WriteHeader(http.StatusForbidden)
+			return
+		}
 	}
 
+	a.next.ServeHTTP(rw, req)
 }
 
 func loadXdb(dbPath string) error {
