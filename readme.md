@@ -12,7 +12,7 @@
       plugins:
         example:
           moduleName: github.com/jeessy2/traefik-ip2region
-          version: v0.0.1
+          version: v0.0.3
   ```
 
   ```yaml
