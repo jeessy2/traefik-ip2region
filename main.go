@@ -29,16 +29,19 @@ type Headers struct {
 
 // Config the plugin configuration.
 type Config struct {
-	DBPath  string   `yaml:"dbPath,omitempty"`
-	Headers *Headers `yaml:"headers"`
-	Ban     Ban      `yaml:"ban"`
+	DBPath    string   `yaml:"dbPath,omitempty"`
+	Headers   *Headers `yaml:"headers"`
+	Ban       Rules    `yaml:"ban"`
+	Whitelist Rules    `yaml:"whitelist"`
 }
 
-// Ban
-type Ban struct {
-	UserAgent []string `yaml:"userAgent"`
+// Rules
+type Rules struct {
+	Enabled   bool     `yaml:"enabled"`
 	Country   []string `yaml:"country"`
+	Province  []string `yaml:"province"`
 	City      []string `yaml:"city"`
+	UserAgent []string `yaml:"userAgent"`
 }
 
 // CreateConfig creates the default plugin configuration.
@@ -51,10 +54,11 @@ func CreateConfig() *Config {
 
 // TraefikIp2Region a Demo plugin.
 type TraefikIp2Region struct {
-	next    http.Handler
-	name    string
-	headers *Headers
-	ban     Ban
+	Next      http.Handler
+	Name      string
+	Headers   *Headers
+	Ban       Rules
+	Whitelist Rules
 }
 
 // New created a new Demo plugin.
@@ -65,10 +69,11 @@ func New(ctx context.Context, next http.Handler, config *Config, name string) (h
 	}
 
 	return &TraefikIp2Region{
-		next:    next,
-		name:    name,
-		headers: config.Headers,
-		ban:     config.Ban,
+		Next:      next,
+		Name:      name,
+		Headers:   config.Headers,
+		Ban:       config.Ban,
+		Whitelist: config.Whitelist,
 	}, nil
 }
 
@@ -96,36 +101,85 @@ func (a *TraefikIp2Region) ServeHTTP(rw http.ResponseWriter, req *http.Request) 
 
 	// add headers
 	// 国家|区域|省份|城市|ISP
-	req.Header.Add(a.headers.Country, data[0])
-	req.Header.Add(a.headers.Province, data[2])
-	req.Header.Add(a.headers.City, data[3])
-	req.Header.Add(a.headers.ISP, data[4])
+	req.Header.Add(a.Headers.Country, data[0])
+	req.Header.Add(a.Headers.Province, data[2])
+	req.Header.Add(a.Headers.City, data[3])
+	req.Header.Add(a.Headers.ISP, data[4])
 
-	// ban country
-	for _, v := range a.ban.Country {
-		if v == data[0] {
-			rw.WriteHeader(http.StatusForbidden)
-			return
+	// Ban
+	if a.Ban.Enabled {
+		// country
+		for _, v := range a.Ban.Country {
+			if v == data[0] {
+				rw.WriteHeader(http.StatusForbidden)
+				return
+			}
+		}
+
+		// province
+		for _, v := range a.Ban.Province {
+			if v == data[2] {
+				rw.WriteHeader(http.StatusForbidden)
+				return
+			}
+		}
+
+		// city
+		for _, v := range a.Ban.City {
+			if v == data[3] {
+				rw.WriteHeader(http.StatusForbidden)
+				return
+			}
+		}
+
+		// UserAgent
+		for _, v := range a.Ban.UserAgent {
+			if v == req.UserAgent() {
+				rw.WriteHeader(http.StatusForbidden)
+				return
+			}
 		}
 	}
 
-	// ban city
-	for _, v := range a.ban.City {
-		if v == data[3] {
-			rw.WriteHeader(http.StatusForbidden)
-			return
+	// Whitelist
+	if a.Whitelist.Enabled {
+		// country
+		for _, v := range a.Whitelist.Country {
+			if v == data[0] {
+				a.Next.ServeHTTP(rw, req)
+				return
+			}
 		}
+
+		// province
+		for _, v := range a.Whitelist.Province {
+			if v == data[2] {
+				a.Next.ServeHTTP(rw, req)
+				return
+			}
+		}
+
+		// city
+		for _, v := range a.Whitelist.City {
+			if v == data[3] {
+				a.Next.ServeHTTP(rw, req)
+				return
+			}
+		}
+
+		// UserAgent
+		for _, v := range a.Whitelist.UserAgent {
+			if v == req.UserAgent() {
+				a.Next.ServeHTTP(rw, req)
+				return
+			}
+		}
+		// if the ip is not in the whitelist, return 403
+		rw.WriteHeader(http.StatusForbidden)
+		return
 	}
 
-	// ban UserAgent
-	for _, v := range a.ban.UserAgent {
-		if v == req.UserAgent() {
-			rw.WriteHeader(http.StatusForbidden)
-			return
-		}
-	}
-
-	a.next.ServeHTTP(rw, req)
+	a.Next.ServeHTTP(rw, req)
 }
 
 func loadXdb(dbPath string) error {
