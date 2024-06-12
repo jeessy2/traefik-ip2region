@@ -12,7 +12,7 @@
       plugins:
         example:
           moduleName: github.com/jeessy2/traefik-ip2region
-          version: v0.0.4
+          version: v0.0.6
   ```
 
   ```yaml
@@ -21,7 +21,7 @@
       my-plugins:
         plugin:
           traefik-ip2region:
-            dbPath: /opt/plugins-storage/ip2region.xdb
+            dbPath: /plugins-local/config/ip2region.xdb
             # headers:
             #  country: "X-Ip2region-City"
             #  province: "X-Ip2region-Province"
