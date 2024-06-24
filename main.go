@@ -11,11 +11,6 @@ import (
 	"github.com/lionsoul2014/ip2region/binding/golang/xdb"
 )
 
-const (
-	// RealIPHeader real ip header.
-	RealIPHeader = "X-Real-IP"
-)
-
 // searcher cached
 var searcher *xdb.Searcher
 
@@ -48,7 +43,7 @@ type Rules struct {
 func CreateConfig() *Config {
 	return &Config{
 		DBPath:  "ip2region.xdb",
-		Headers: &Headers{Country: "X-Ip2Region-Country", Province: "X-Ip2Region-Province", City: "X-Ip2Region-City", ISP: "X-Ip2Region-Isp"},
+		Headers: &Headers{Country: "X-Ip2region-Country", Province: "X-Ip2region-Province", City: "X-Ip2region-City", ISP: "X-Ip2region-Isp"},
 	}
 }
 
@@ -79,13 +74,10 @@ func New(ctx context.Context, next http.Handler, config *Config, name string) (h
 
 func (a *TraefikIp2Region) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
-	ipStr := req.Header.Get(RealIPHeader)
-	if ipStr == "" {
-		ipStr = req.RemoteAddr
-		tmp, _, err := net.SplitHostPort(ipStr)
-		if err == nil {
-			ipStr = tmp
-		}
+	ipStr := req.RemoteAddr
+	tmp, _, err := net.SplitHostPort(ipStr)
+	if err == nil {
+		ipStr = tmp
 	}
 
 	var data []string = make([]string, 5)
