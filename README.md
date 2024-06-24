@@ -12,7 +12,7 @@
       plugins:
         example:
           moduleName: github.com/jeessy2/traefik-ip2region
-          version: v0.0.6
+          version: v0.0.7
   ```
 
   ```yaml
@@ -22,11 +22,11 @@
         plugin:
           traefik-ip2region:
             dbPath: /plugins-local/config/ip2region.xdb
-            # headers:
-            #  country: "X-Ip2region-City"
-            #  province: "X-Ip2region-Province"
-            #  city: "X-Ip2region-City"
-            #  isp: "X-Ip2region-Isp"
+            headers:
+              country: "X-Ip2region-City"
+              province: "X-Ip2region-Province"
+              city: "X-Ip2region-City"
+              isp: "X-Ip2region-Isp"
             ban:
               enabled: false
               country:
@@ -50,7 +50,7 @@
 
   ```
 
-- crd
+- k8s
 ```yaml
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
@@ -59,7 +59,7 @@ metadata:
 spec:
   plugin:
     traefik-ip2region:
-      # dbPath: /plugins-local/config/ip2region.xdb
+      dbPath: /plugins-local/config/ip2region.xdb
       ban:
         enabled: false
       whitelist:
