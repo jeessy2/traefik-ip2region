@@ -23,7 +23,7 @@
           traefik-ip2region:
             dbPath: /plugins-local/config/ip2region.xdb
             headers:
-              country: "X-Ip2region-City"
+              country: "X-Ip2region-Country"
               province: "X-Ip2region-Province"
               city: "X-Ip2region-City"
               isp: "X-Ip2region-Isp"
