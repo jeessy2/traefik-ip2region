@@ -24,10 +24,11 @@ type Headers struct {
 
 // Config the plugin configuration.
 type Config struct {
-	DBPath    string   `yaml:"dbPath,omitempty"`
-	Headers   *Headers `yaml:"headers"`
-	Ban       Rules    `yaml:"ban"`
-	Whitelist Rules    `yaml:"whitelist"`
+	DBPath       string   `yaml:"dbPath,omitempty"`
+	Headers      *Headers `yaml:"headers"`
+	Ban          Rules    `yaml:"ban"`
+	Whitelist    Rules    `yaml:"whitelist"`
+	IpFromHeader string   `yaml:"ipFromHeader,omitempty"`
 }
 
 // Rules
@@ -42,18 +43,20 @@ type Rules struct {
 // CreateConfig creates the default plugin configuration.
 func CreateConfig() *Config {
 	return &Config{
-		DBPath:  "ip2region.xdb",
-		Headers: &Headers{Country: "X-Ip2region-Country", Province: "X-Ip2region-Province", City: "X-Ip2region-City", ISP: "X-Ip2region-Isp"},
+		DBPath:       "ip2region.xdb",
+		Headers:      &Headers{Country: "X-Ip2region-Country", Province: "X-Ip2region-Province", City: "X-Ip2region-City", ISP: "X-Ip2region-Isp"},
+		IpFromHeader: "",
 	}
 }
 
 // TraefikIp2Region a Demo plugin.
 type TraefikIp2Region struct {
-	Next      http.Handler
-	Name      string
-	Headers   *Headers
-	Ban       Rules
-	Whitelist Rules
+	next         http.Handler
+	name         string
+	headers      *Headers
+	ban          Rules
+	whitelist    Rules
+	ipFromHeader string
 }
 
 // New created a new Demo plugin.
@@ -64,21 +67,18 @@ func New(ctx context.Context, next http.Handler, config *Config, name string) (h
 	}
 
 	return &TraefikIp2Region{
-		Next:      next,
-		Name:      name,
-		Headers:   config.Headers,
-		Ban:       config.Ban,
-		Whitelist: config.Whitelist,
+		next:         next,
+		name:         name,
+		headers:      config.Headers,
+		ban:          config.Ban,
+		whitelist:    config.Whitelist,
+		ipFromHeader: config.IpFromHeader,
 	}, nil
 }
 
 func (a *TraefikIp2Region) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 
-	ipStr := req.RemoteAddr
-	tmp, _, err := net.SplitHostPort(ipStr)
-	if err == nil {
-		ipStr = tmp
-	}
+	ipStr := getClientIP(req, a.ipFromHeader)
 
 	var data []string = make([]string, 5)
 
@@ -93,15 +93,15 @@ func (a *TraefikIp2Region) ServeHTTP(rw http.ResponseWriter, req *http.Request) 
 
 	// add headers
 	// 国家|区域|省份|城市|ISP
-	req.Header.Add(a.Headers.Country, data[0])
-	req.Header.Add(a.Headers.Province, data[2])
-	req.Header.Add(a.Headers.City, data[3])
-	req.Header.Add(a.Headers.ISP, data[4])
+	req.Header.Add(a.headers.Country, data[0])
+	req.Header.Add(a.headers.Province, data[2])
+	req.Header.Add(a.headers.City, data[3])
+	req.Header.Add(a.headers.ISP, data[4])
 
 	// Ban
-	if a.Ban.Enabled {
+	if a.ban.Enabled {
 		// country
-		for _, v := range a.Ban.Country {
+		for _, v := range a.ban.Country {
 			if v == data[0] {
 				rw.WriteHeader(http.StatusForbidden)
 				return
@@ -109,7 +109,7 @@ func (a *TraefikIp2Region) ServeHTTP(rw http.ResponseWriter, req *http.Request) 
 		}
 
 		// province
-		for _, v := range a.Ban.Province {
+		for _, v := range a.ban.Province {
 			if v == data[2] {
 				rw.WriteHeader(http.StatusForbidden)
 				return
@@ -117,7 +117,7 @@ func (a *TraefikIp2Region) ServeHTTP(rw http.ResponseWriter, req *http.Request) 
 		}
 
 		// city
-		for _, v := range a.Ban.City {
+		for _, v := range a.ban.City {
 			if v == data[3] {
 				rw.WriteHeader(http.StatusForbidden)
 				return
@@ -125,7 +125,7 @@ func (a *TraefikIp2Region) ServeHTTP(rw http.ResponseWriter, req *http.Request) 
 		}
 
 		// UserAgent
-		for _, v := range a.Ban.UserAgent {
+		for _, v := range a.ban.UserAgent {
 			if v == req.UserAgent() {
 				rw.WriteHeader(http.StatusForbidden)
 				return
@@ -134,35 +134,35 @@ func (a *TraefikIp2Region) ServeHTTP(rw http.ResponseWriter, req *http.Request) 
 	}
 
 	// Whitelist
-	if a.Whitelist.Enabled {
+	if a.whitelist.Enabled {
 		// country
-		for _, v := range a.Whitelist.Country {
+		for _, v := range a.whitelist.Country {
 			if v == data[0] {
-				a.Next.ServeHTTP(rw, req)
+				a.next.ServeHTTP(rw, req)
 				return
 			}
 		}
 
 		// province
-		for _, v := range a.Whitelist.Province {
+		for _, v := range a.whitelist.Province {
 			if v == data[2] {
-				a.Next.ServeHTTP(rw, req)
+				a.next.ServeHTTP(rw, req)
 				return
 			}
 		}
 
 		// city
-		for _, v := range a.Whitelist.City {
+		for _, v := range a.whitelist.City {
 			if v == data[3] {
-				a.Next.ServeHTTP(rw, req)
+				a.next.ServeHTTP(rw, req)
 				return
 			}
 		}
 
 		// UserAgent
-		for _, v := range a.Whitelist.UserAgent {
+		for _, v := range a.whitelist.UserAgent {
 			if v == req.UserAgent() {
-				a.Next.ServeHTTP(rw, req)
+				a.next.ServeHTTP(rw, req)
 				return
 			}
 		}
@@ -171,7 +171,7 @@ func (a *TraefikIp2Region) ServeHTTP(rw http.ResponseWriter, req *http.Request) 
 		return
 	}
 
-	a.Next.ServeHTTP(rw, req)
+	a.next.ServeHTTP(rw, req)
 }
 
 func loadXdb(dbPath string) error {
@@ -189,4 +189,23 @@ func loadXdb(dbPath string) error {
 		}
 	}
 	return nil
+}
+
+func getClientIP(req *http.Request, ipFromHeader string) string {
+	if ipFromHeader != "" {
+		// Check header first
+		forwardedFor := req.Header.Get(ipFromHeader)
+		if forwardedFor != "" {
+			ips := strings.Split(forwardedFor, ",")
+			return strings.TrimSpace(ips[0])
+		}
+	}
+
+	// If ipFromHeader is not present or retrieval is not enabled, fallback to RemoteAddr
+	remoteAddr := req.RemoteAddr
+	tmp, _, err := net.SplitHostPort(remoteAddr)
+	if err == nil {
+		remoteAddr = tmp
+	}
+	return remoteAddr
 }
