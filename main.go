@@ -86,7 +86,8 @@ func (a *TraefikIp2Region) ServeHTTP(rw http.ResponseWriter, req *http.Request) 
 	region, err := searcher.SearchByStr(ipStr)
 	if err == nil {
 		data = strings.Split(region, "|")
-		if len(data) != 5 {
+		if len(data) < 5 {
+			// If the data is not enough, fill it with empty strings
 			data = make([]string, 5)
 		}
 	}
