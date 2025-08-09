@@ -12,7 +12,7 @@
       plugins:
         example:
           moduleName: github.com/jeessy2/traefik-ip2region
-          version: v0.1.1
+          version: v1.0.0
   ```
 
   ```yaml
@@ -37,7 +37,11 @@
               city:
               #  -
               userAgent:
-              #  - 
+                enabled: false
+                browserVersion: 
+                  - 138.0.0
+                device:
+                  - Bot
             whitelist:
               enabled: false
               country:
@@ -47,9 +51,37 @@
               city:
               #  -
               userAgent:
-              #  - 
+                enabled: false
+                browserVersion: 
+                  - 138.0.0
+                device:
+                  - Bot
 
   ```
+
+- [UserAgent](https://github.com/medama-io/go-useragent/blob/main/agents/const.go)
+
+  | Type | Value |
+  |------|--------|
+  | Browser | Android Browser |
+  | Browser | Chrome |
+  | Browser | Edge |
+  | Browser | Firefox |
+  | Browser | IE |
+  | Browser | Opera |
+  | Browser | Opera Mini |
+  | Browser | Safari |
+  | Browser | Vivaldi |
+  | Browser | Amazon Silk |
+  | Browser | Samsung Browser |
+  | Browser | Falkon |
+  | Browser | Nintendo Browser |
+  | Browser | Yandex Browser |
+  | Device | Desktop |
+  | Device | Mobile |
+  | Device | Tablet |
+  | Device | TV |
+  | Device | Bot |
 
 - k8s
 ```yaml

@@ -58,6 +58,35 @@ func TestDemo(t *testing.T) {
 	assertHeader(t, req, "X-Ip2region-Country", "澳大利亚")
 }
 
+func TestUserAgent(t *testing.T) {
+	cfg := CreateConfig()
+	cfg.Whitelist.Enabled = true
+	cfg.Whitelist.UserAgent.Enabled = true
+	cfg.Whitelist.UserAgent.Device = []string{"Bot"}
+
+	ctx := context.Background()
+	next := http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {})
+
+	handler, err := New(ctx, next, cfg, "demo-plugin")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	recorder := httptest.NewRecorder()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://localhost", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.RemoteAddr = "223.5.5.5:9999"
+	req.Header.Set("User-Agent", "Java/17.0.12")
+	handler.ServeHTTP(recorder, req)
+
+	if recorder.Result().StatusCode == http.StatusForbidden {
+		t.Errorf("invalid status code: %d", recorder.Result().StatusCode)
+	}
+}
+
 func assertHeader(t *testing.T, req *http.Request, key, expected string) {
 	t.Helper()
 	k := req.Header.Get(key)

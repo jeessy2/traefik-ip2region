@@ -9,10 +9,13 @@ import (
 	"strings"
 
 	"github.com/lionsoul2014/ip2region/binding/golang/xdb"
+	goUserAgent "github.com/medama-io/go-useragent"
 )
 
 // searcher cached
 var searcher *xdb.Searcher
+
+var ua = goUserAgent.NewParser()
 
 // Headers part of the configuration
 type Headers struct {
@@ -33,11 +36,19 @@ type Config struct {
 
 // Rules
 type Rules struct {
-	Enabled   bool     `yaml:"enabled"`
-	Country   []string `yaml:"country"`
-	Province  []string `yaml:"province"`
-	City      []string `yaml:"city"`
-	UserAgent []string `yaml:"userAgent"`
+	Enabled   bool      `yaml:"enabled"`
+	Country   []string  `yaml:"country"`
+	Province  []string  `yaml:"province"`
+	City      []string  `yaml:"city"`
+	UserAgent UserAgent `yaml:"userAgent"`
+}
+
+// UserAgent
+type UserAgent struct {
+	Enabled        bool     `yaml:"enabled"`
+	Browser        []string `yaml:"browser"`
+	BrowserVersion []string `yaml:"browserVersion"`
+	Device         []string `yaml:"device"`
 }
 
 // CreateConfig creates the default plugin configuration.
@@ -126,11 +137,34 @@ func (a *TraefikIp2Region) ServeHTTP(rw http.ResponseWriter, req *http.Request) 
 		}
 
 		// UserAgent
-		for _, v := range a.ban.UserAgent {
-			if v == req.UserAgent() {
-				rw.WriteHeader(http.StatusForbidden)
-				return
+		if a.ban.UserAgent.Enabled {
+			// Parse the User-Agent
+			agent := ua.Parse(req.UserAgent())
+
+			// Check Browser
+			for _, v := range a.ban.UserAgent.Browser {
+				if agent.Browser().String() == v {
+					rw.WriteHeader(http.StatusForbidden)
+					return
+				}
 			}
+
+			// Check browser version
+			for _, v := range a.ban.UserAgent.BrowserVersion {
+				if agent.BrowserVersion() == v {
+					rw.WriteHeader(http.StatusForbidden)
+					return
+				}
+			}
+
+			// Check Device
+			for _, v := range a.ban.UserAgent.Device {
+				if agent.Device().String() == v {
+					rw.WriteHeader(http.StatusForbidden)
+					return
+				}
+			}
+
 		}
 	}
 
@@ -161,12 +195,35 @@ func (a *TraefikIp2Region) ServeHTTP(rw http.ResponseWriter, req *http.Request) 
 		}
 
 		// UserAgent
-		for _, v := range a.whitelist.UserAgent {
-			if v == req.UserAgent() {
-				a.next.ServeHTTP(rw, req)
-				return
+		if a.whitelist.UserAgent.Enabled {
+			// Parse the User-Agent
+			agent := ua.Parse(req.UserAgent())
+			
+			// Check Browser
+			for _, v := range a.whitelist.UserAgent.Browser {
+				if agent.Browser().String() == v {
+					a.next.ServeHTTP(rw, req)
+					return
+				}
+			}
+
+			// Check browser version
+			for _, v := range a.whitelist.UserAgent.BrowserVersion {
+				if agent.BrowserVersion() == v {
+					a.next.ServeHTTP(rw, req)
+					return
+				}
+			}
+
+			// Check Device
+			for _, v := range a.whitelist.UserAgent.Device {
+				if agent.Device().String() == v {
+					a.next.ServeHTTP(rw, req)
+					return
+				}
 			}
 		}
+
 		// if the ip is not in the whitelist, return 403
 		rw.WriteHeader(http.StatusForbidden)
 		return
