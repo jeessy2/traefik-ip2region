@@ -40,6 +40,7 @@ type Rules struct {
 	Country   []string  `yaml:"country"`
 	Province  []string  `yaml:"province"`
 	City      []string  `yaml:"city"`
+	ISP       []string  `yaml:"isp"`
 	UserAgent UserAgent `yaml:"userAgent"`
 }
 
@@ -136,6 +137,14 @@ func (a *TraefikIp2Region) ServeHTTP(rw http.ResponseWriter, req *http.Request) 
 			}
 		}
 
+		// isp
+		for _, v := range a.ban.ISP {
+			if v == data[4] {
+				rw.WriteHeader(http.StatusForbidden)
+				return
+			}
+		}
+
 		// UserAgent
 		if a.ban.UserAgent.Enabled {
 			// Parse the User-Agent
@@ -194,11 +203,19 @@ func (a *TraefikIp2Region) ServeHTTP(rw http.ResponseWriter, req *http.Request) 
 			}
 		}
 
+		// isp
+		for _, v := range a.whitelist.ISP {
+			if v == data[4] {
+				a.next.ServeHTTP(rw, req)
+				return
+			}
+		}
+
 		// UserAgent
 		if a.whitelist.UserAgent.Enabled {
 			// Parse the User-Agent
 			agent := ua.Parse(req.UserAgent())
-			
+
 			// Check Browser
 			for _, v := range a.whitelist.UserAgent.Browser {
 				if agent.Browser().String() == v {

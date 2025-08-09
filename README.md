@@ -36,6 +36,8 @@
               #  - 
               city:
               #  -
+              isp:
+              #  -
               userAgent:
                 enabled: false
                 browserVersion: 
@@ -49,6 +51,8 @@
               province:
               #  - 
               city:
+              #  -
+              isp:
               #  -
               userAgent:
                 enabled: false
