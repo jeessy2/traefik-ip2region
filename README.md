@@ -40,6 +40,8 @@
               #  -
               userAgent:
                 enabled: false
+                browser: 
+                #  - IE
                 browserVersion: 
                   - 138.0.0
                 device:
@@ -56,14 +58,19 @@
               #  -
               userAgent:
                 enabled: false
+                browser: 
+                  - Chrome
+                  - Safari
+                  - Firefox
                 browserVersion: 
-                  - 138.0.0
+                #  - 138.0.0
                 device:
-                  - Bot
+                  - Desktop
+                  - Mobile
 
   ```
 
-- [UserAgent](https://github.com/medama-io/go-useragent/blob/main/agents/const.go)
+- [UserAgent](https://github.com/jeessy2/go-useragent/blob/main/agents/const.go)
 
   | Type | Value |
   |------|--------|
