@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/medama-io/go-useragent/data"
 	"github.com/medama-io/go-useragent/internal"
 )
 
@@ -48,8 +49,8 @@ func (p *Parser) Parse(ua string) UserAgent {
 // NewParser creates a new parser and populates it with the default embedded user agent data.
 func NewParser() *Parser {
 	once.Do(func() {
+		userAgentsFile := string(data.FinalData)
 		var err error
-
 		parser, err = newParserFromReader(strings.NewReader(userAgentsFile))
 		if err != nil {
 			// Panicking is fine since it would be caught in a test and is a fixed trusted input.

@@ -1,8 +1,7 @@
 package internal
 
 import (
-	"cmp"
-	"slices"
+	"sort"
 
 	str "github.com/boyter/go-string"
 	"github.com/medama-io/go-useragent/agents"
@@ -145,15 +144,11 @@ func MatchTokenIndexes(ua string) []MatchResults {
 	//
 	// Some tokens may have the same EndIndex, so we need to sort by Match key
 	// to make it deterministic.
-	slices.SortFunc(results, func(a, b MatchResults) int {
-		// Sort by EndIndex in descending order.
-		result := cmp.Compare(b.EndIndex, a.EndIndex)
-		if result != 0 {
-			return result
+	sort.Slice(results, func(i, j int) bool {
+		if results[i].EndIndex != results[j].EndIndex {
+			return results[i].EndIndex > results[j].EndIndex
 		}
-
-		// Ascending order.
-		return cmp.Compare(a.Match, b.Match)
+		return results[i].Match < results[j].Match
 	})
 
 	return results

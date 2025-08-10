@@ -4,8 +4,10 @@ github.com/boyter/go-string
 # github.com/lionsoul2014/ip2region/binding/golang v0.0.0-20240510055607-89e20ab7b6c6
 ## explicit; go 1.17
 github.com/lionsoul2014/ip2region/binding/golang/xdb
-# github.com/medama-io/go-useragent v1.2.1
+# github.com/medama-io/go-useragent v1.2.1 => github.com/jeessy2/go-useragent v1.2.1-patch
 ## explicit; go 1.21.4
 github.com/medama-io/go-useragent
 github.com/medama-io/go-useragent/agents
+github.com/medama-io/go-useragent/data
 github.com/medama-io/go-useragent/internal
+# github.com/medama-io/go-useragent => github.com/jeessy2/go-useragent v1.2.1-patch

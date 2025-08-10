@@ -2,8 +2,8 @@ package useragent
 
 import (
 	"math"
+	"reflect"
 	"slices"
-	"unsafe"
 
 	"github.com/medama-io/go-useragent/internal"
 )
@@ -340,22 +340,22 @@ func (trie *RuneTrie) GetMemoryStats() MemoryStats {
 	stats := MemoryStats{}
 
 	// Base struct size
-	stats.NodeSize = int(unsafe.Sizeof(*trie))
+	stats.NodeSize = int(reflect.TypeOf(*trie).Size())
 
 	// Children array memory
 	if len(trie.childrenArr) > 0 {
 		stats.ChildrenCount = len(trie.childrenArr)
 		// Slice header + capacity * element size
-		sliceHeader := int(unsafe.Sizeof([]childNode{}))
-		elementSize := int(unsafe.Sizeof(childNode{}))
+		sliceHeader := int(reflect.TypeOf([]childNode{}).Size())
+		elementSize := int(reflect.TypeOf(childNode{}).Size())
 		stats.ChildrenArrSize = sliceHeader + (cap(trie.childrenArr) * elementSize)
 	}
 
 	// Result slice memory
 	if len(trie.result) > 0 {
 		stats.ResultCount = len(trie.result)
-		sliceHeader := int(unsafe.Sizeof([]resultItem{}))
-		elementSize := int(unsafe.Sizeof(resultItem{}))
+		sliceHeader := int(reflect.TypeOf([]resultItem{}).Size())
+		elementSize := int(reflect.TypeOf(resultItem{}).Size())
 		stats.ResultSize = sliceHeader + (cap(trie.result) * elementSize)
 	}
 
